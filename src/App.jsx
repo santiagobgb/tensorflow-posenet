@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import './App.css';
-import * as posenet from "@tensorflow-models/posenet";
-import "@tensorflow/tfjs";
-import Webcam from "react-webcam";
-import { drawKeypoints, drawSkeleton } from './utilities'
+import * as posenet from '@tensorflow-models/posenet';
+import '@tensorflow/tfjs';
+import * as tf from '@tensorflow/tfjs';
+import Webcam from 'react-webcam';
+import { drawKeypoints } from './utilities';
 
 function App() {
   const webcamRef = useRef(null);
@@ -12,81 +13,93 @@ function App() {
   useEffect(() => {
     const runPosenet = async () => {
       const net = await posenet.load();
+      const video = webcamRef.current.video;
 
-      setInterval(() => {
-        detectPose(net);
-      }, 1000);
-    };
+      // Wait for the video metadata to be loaded
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
 
-    const detectPose = async (net) => {
+      const detectPose = async () => {
+        // Log pose for debugging
+        const pose = await net.estimateSinglePose(tf.browser.fromPixels(video), {
+          flipHorizontal: false,
+        });
+        console.log('Pose:', pose);
       
-      if (
-        typeof webcamRef.current !== "undefined" &&
-        webcamRef.current !== null &&
-        webcamRef.current.video.readyState === 4
-      ) {
-        const video = webcamRef.current.video;
-        const videoWidth = video.width;
-        const videoHeight = video.height;
-        
-        canvasRef.current.width = videoWidth;
-        canvasRef.current.height = videoHeight;
-
-        const pose = await net.estimateSinglePose(video);
-        console.log(pose);
-       
-        drawCanvas(pose,video,videoWidth,videoHeight);
-        
-        
-      }
+        // Set canvas dimensions based on video dimensions
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      
+        // Clear canvas
+        ctx.clearRect(0, 0, video.videoWidth, video.videoHeight);
+      
+        // Draw keypoints directly on the canvas
+        pose.keypoints.forEach(({ position, score, part }) => {
+          if (score > 0.5) {
+            const { x, y } = position;
+      
+            // Draw a red circle at the keypoints
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+      
+            // Display the part name next to the keypoints
+            ctx.fillStyle = 'white';
+            ctx.font = '10px Arial';
+            ctx.fillText(part, x, y - 5);
+          }
+        });
+      
+      
+        // Display canvas dimensions in console for debugging
+        console.log('Canvas dimensions:', video.videoWidth, video.videoHeight);
+      };
+      
+      // Main animation loop
+      setInterval(detectPose, 1000);
     };
 
-    const drawCanvas = ( pose, video, videoWidth, videoHeight, canvas) =>{
-      const ctx = canvas.getContext('2d')
-      canvas.current.width = videoWidth;
-      canvas.height = videoHeight;
-      drawKeypoints(pose["keypoints"], 0.5, ctx);
-      drawSkeleton(pose["keypoints"], 0.5, ctx);
-    }
-
+    // Run the PoseNet setup
     runPosenet();
   }, []);
-
 
   return (
     <>
       <Webcam
         style={{
-          position: "absolute",
-          marginLeft: "auto",
-          marginRight: "auto",
+          position: 'absolute',
+          marginLeft: 'auto',
+          marginRight: 'auto',
           left: 0,
           right: 0,
-          textAlign: "center",
+          textAlign: 'center',
           zIndex: 9,
           width: 640,
           height: 480,
         }}
-       
         ref={webcamRef}
       />
       <canvas
         style={{
-          position: "absolute",
-          marginLeft: "auto",
-          marginRight: "auto",
+          position: 'absolute',
+          marginLeft: 'auto',
+          marginRight: 'auto',
           left: 0,
           right: 0,
-          textAlign: "center",
+          textAlign: 'center',
           zIndex: 9,
           width: 640,
           height: 480,
         }}
         ref={canvasRef}
-      />
-        
+      ></canvas>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
+

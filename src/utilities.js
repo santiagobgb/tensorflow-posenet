@@ -80,12 +80,13 @@ function toTuple({ y, x }) {
   return [y, x];
 }
 
-export function drawPoint(ctx, y, x, r, color) {
+export function drawPoint(ctx, y, x, size, pointColor) {
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, 2 * Math.PI);
-  ctx.fillStyle = color;
+  ctx.arc(x, y, size, 0, 2 * Math.PI);
+  ctx.fillStyle = pointColor;
   ctx.fill();
 }
+
 
 /**
  * Draws a line on a canvas, i.e. a joint
@@ -131,7 +132,17 @@ export function drawKeypoints(keypoints, minConfidence, ctx, scale = 1) {
     }
 
     const { y, x } = keypoint.position;
-    drawPoint(ctx, y * scale, x * scale, 3, color);
+    const scaledX = (x / scale) * ctx.canvas.width;
+    const scaledY = (y / scale) * ctx.canvas.height;
+
+    // Draw a larger red circle with a white stroke for better visibility
+    ctx.beginPath();
+    ctx.arc(scaledX, scaledY, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = 'red';
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
